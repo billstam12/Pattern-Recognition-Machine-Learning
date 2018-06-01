@@ -66,6 +66,11 @@ for i=1:p
             Train_array_pos=[Train_array_pos; i j];
         end
         
+        
+    end
+end
+for i=1:p
+    for j=1:n
         if(Test_Set_Image(i,j)>0) %Check if the (i,j) pixel is a test pixel
             Test_array=[Test_array squeeze(Test(i,j,:))];
             Test_array_response=[Test_array_response Test_Set_Image(i,j)];
@@ -74,14 +79,23 @@ for i=1:p
     end
 end
 
+%Transpose matrixes
 Train_array = Train_array';
 Train_array_response = Train_array_response';
 Test_array = Test_array';
 Test_array_response = Test_array_response';
+
 %--------------------------------------------- Naive Bayes Classification -------------------------------------------------------------
 %MATLAB's Naive Bayes
-%Mdl = fitcnb(Train_array, Train_array_response);
-%predictions = predict(Mdl, Test_array);
+Mdl = fitcnb(Train_array, Train_array_response);
+predictions = predict(Mdl, Test_array);
+
+confusion_matrix = zeros(5, 5);
+for i=1: length(predictions)
+     confusion_matrix(Test_array_response(i), predictions(i) ) =  confusion_matrix(Test_array_response(i), predictions(i) ) + 1;
+end
+confusion_matrix
+success_rate = trace(confusion_matrix)/  sum(sum(confusion_matrix))
 
 % Calculate real a priori
 for i = 1:5
@@ -95,9 +109,32 @@ for i = 1:5
     sigma(i,:) = std(Train_array((Train_array_response==i),:),1);
 end
 
+
 % Calculate a posteriori 
 for i = 1:length(Test_array)
-    %Normal pdf to calculate likelihood for all classes
-    p = normpdf( ones(5,1)*Test_array( j, :), mu, sigma);
+    % I tried using the pdf to calculate the aposteriori probabilities but
+    % it didn't worked. So I used cdf.
+%     for j = 1:5
+%         cmp  = (1/(sqrt(2*pi)*sigma(j)))*exp(-(Test_array(i,:)-mu(j)).^2/(2*sigma(j)));
+%         p(j) = prod(cmp,2)
+%     end
+    p = normcdf(Test_array( i, :), mu, sigma);
     P(i,:) = Probabilities.*prod(p,2)';
 end 
+
+% get predicted output for test set
+[pv0,id]=max(P,[],2);
+for i=1:length(id)
+    predictions(i,1) = id(i);
+end
+
+ %Confusion matrix and Accuracy
+confusion_matrix = zeros(5, 5);
+for i=1: length(predictions)
+     confusion_matrix(Test_array_response(i), predictions(i) ) =  confusion_matrix(Test_array_response(i), predictions(i) ) + 1;
+end
+confusion_matrix
+success_rate = trace(confusion_matrix)/  sum(sum(confusion_matrix))
+
+
+%--------------------------------------------- Nearest Neighbors  -------------------------------------------------------------
