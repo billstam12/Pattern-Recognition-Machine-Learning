@@ -87,6 +87,7 @@ Test_array_response = Test_array_response';
 
 %--------------------------------------------- Naive Bayes Classification -------------------------------------------------------------
 %MATLAB's Naive Bayes
+
 Mdl = fitcnb(Train_array, Train_array_response);
 predictions = predict(Mdl, Test_array);
 
@@ -94,6 +95,7 @@ confusion_matrix = zeros(5, 5);
 for i=1: length(predictions)
      confusion_matrix(Test_array_response(i), predictions(i) ) =  confusion_matrix(Test_array_response(i), predictions(i) ) + 1;
 end
+fprintf("Matlab Naive Bayes\n");
 confusion_matrix
 success_rate = trace(confusion_matrix)/  sum(sum(confusion_matrix))
 
@@ -112,8 +114,7 @@ end
 
 % Calculate a posteriori 
 for i = 1:length(Test_array)
-    % I tried using the pdf to calculate the aposteriori probabilities but
-    % it didn't worked. So I used cdf.
+        % YPOLOGISE PINAKA SINDIASPORAS
 %     for j = 1:5
 %         cmp  = (1/(sqrt(2*pi)*sigma(j)))*exp(-(Test_array(i,:)-mu(j)).^2/(2*sigma(j)));
 %         p(j) = prod(cmp,2)
@@ -133,8 +134,126 @@ confusion_matrix = zeros(5, 5);
 for i=1: length(predictions)
      confusion_matrix(Test_array_response(i), predictions(i) ) =  confusion_matrix(Test_array_response(i), predictions(i) ) + 1;
 end
+fprintf("My Naive Bayes\n");
 confusion_matrix
 success_rate = trace(confusion_matrix)/  sum(sum(confusion_matrix))
 
 
-%--------------------------------------------- Nearest Neighbors  -------------------------------------------------------------
+%--------------------------------------------- Euclidean Distance Classifier  -------------------------------------------------------------
+test_predictions = [];
+for i = 1:length(Test_array)
+   min = [sqrt(sum((Test_array(i, :) - Train_array(1,:)).^2)) Train_array_response(1)];
+   for j = 2:length(Train_array)
+        dist = sqrt(sum((Test_array(i, :) - Train_array(j,:)).^2));
+        if(dist < min(1))
+            min = [dist Train_array_response(j)];
+        end
+   end
+    test_predictions = [test_predictions; min(2)];
+end
+
+confusion_matrix = zeros(5, 5);
+for i=1: length(predictions)
+     confusion_matrix(Test_array_response(i), test_predictions(i) ) =  confusion_matrix(Test_array_response(i), test_predictions(i) ) + 1;
+end
+fprintf("Euclidean distance classifier\n");
+confusion_matrix
+success_rate = trace(confusion_matrix)/  sum(sum(confusion_matrix))
+
+%--------------------------------------------- 5-Nearest Neighbor -------------------------------------------------------------
+
+%MATLAB's KNN
+mdl = fitcknn(Train_array, Train_array_response, 'NumNeighbors', 5) ;       
+predictions = predict(mdl, Test_array);
+
+confusion_matrix = zeros(5, 5);
+for i=1: length(predictions)
+     confusion_matrix(Test_array_response(i), predictions(i) ) =  confusion_matrix(Test_array_response(i), predictions(i) ) + 1;
+end
+fprintf("Matlab KNN\n");
+confusion_matrix
+success_rate = trace(confusion_matrix)/  sum(sum(confusion_matrix))
+
+tree = KDTreeSearcher(Train_array, 'Distance' , 'euclidean' , 'BucketSize',10);
+ids = knnsearch(tree, Test_array, 'K',5);
+
+classes = ones(length(ids),5);
+for i = 1:length(classes)
+    for j =1:5
+        classes(i,j) = Train_array_response(ids(i));
+    end
+end
+
+for i  = 1:length(classes)    
+    predictions(i) = mode(classes(i,:));
+end
+
+confusion_matrix = zeros(5, 5);
+for i=1: length(predictions)
+     confusion_matrix(Test_array_response(i), predictions(i) ) =  confusion_matrix(Test_array_response(i), predictions(i) ) + 1;
+end
+fprintf("My KNN\n");
+confusion_matrix
+success_rate = trace(confusion_matrix)/  sum(sum(confusion_matrix))
+
+
+
+%--------------------------------------------- Cross-Validate-Nearest Neighbor -------------------------------------------------------------
+
+cv = 5;
+len = length(Train_array);
+no_of_features = fix(len / cv);
+best_predictor = 0 ;
+max_accuracy = 0;
+
+for k = [3 5 7 9 11 13 15 17]
+ 
+    consistency = 0;
+    for i = 0:(cv-1)
+        start_line = 1 + (i*no_of_features);
+        end_line = start_line + no_of_features-1;
+
+
+        X_test = Train_array(start_line : end_line, :);
+        y_test = Train_array_response(start_line:end_line);
+
+        X_train = Train_array(1:start_line,:);
+        X_train = [ X_train; Train_array(end_line:len,:)];
+        y_train = Train_array_response(1:start_line);
+        y_train = [ y_train; Train_array_response(end_line:len)];
+
+        size(X_train);
+        size(y_train);
+
+
+        tree = KDTreeSearcher(X_train, 'Distance' , 'euclidean' , 'BucketSize',10);
+        ids = knnsearch(tree, X_test, 'K',5);
+
+        classes = ones(length(ids),5);
+        for i = 1:length(classes)
+            for j =1:5
+                classes(i,j) = y_train(ids(i));
+            end
+        end
+        
+        predictions = zeros(length(classes),1);
+        for i  = 1:length(classes)    
+            predictions(i) = mode(classes(i,:));
+        end
+        
+        consistency = consistency + sum(predictions == y_test)/length(y_test)
+
+    end
+
+    accuracy = consistency/cv;
+    if (accuracy > max_accuracy)
+        max_accuracy = accuracy;
+        best_predictor = k;
+    end
+end   
+
+best_predictor
+max_accuracy
+
+    
+
