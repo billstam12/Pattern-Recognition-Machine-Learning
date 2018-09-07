@@ -58,6 +58,11 @@ Train_array_pos=[]; % This array keeps (in its rows) the position of the trainin
 Test_array=[]; %This is the wanted 204xN array
 Test_array_response=[]; % This vector keeps the label of each of the training pixels
 Test_array_pos=[]; % This array keeps (in its rows) the position of the training pixels in the image.
+
+Op_array=[]; %This is the wanted 204xN array
+Op_array_response=[]; % This vector keeps the label of each of the operation pixels
+Op_array_pos=[]; % This array keeps (in its rows) the position of the operation pixels in the image.
+
 for i=1:p
     for j=1:n
         if(Training_Set_Image(i,j)>0) %Check if the (i,j) pixel is a training pixel
@@ -79,11 +84,23 @@ for i=1:p
     end
 end
 
+for i=1:p
+    for j=1:n
+        if(Operational_Set_Image(i,j)>0) %Check if the (i,j) pixel is an operation pixel
+            Op_array=[Op_array squeeze(Test(i,j,:))];
+            Op_array_response=[Op_array_response Operational_Set_Image(i,j)];
+            Op_array_pos=[Op_array_pos; i j];
+        end
+    end
+end
+
 %Transpose matrixes
 Train_array = Train_array';
 Train_array_response = Train_array_response';
 Test_array = Test_array';
 Test_array_response = Test_array_response';
+Op_array = Op_array';
+Op_array_response = Op_array_response';
 
 %--------------------------------------------- Naive Bayes Classification -------------------------------------------------------------
 %MATLAB's Naive Bayes
@@ -111,14 +128,23 @@ for i = 1:5
     sigma(i,:) = std(Train_array((Train_array_response==i),:),1);
 end
 
+% Calculate likelihood and a posteriori
+for i = 1:length(Train_array)
 
-% Calculate a posteriori 
+    p = normcdf(Train_array( i, :), mu, sigma);
+    P(i,:) = Probabilities.*prod(p,2)';
+end 
+
+% get predicted output for train set
+[pv0,id]=max(P,[],2);
+for i=1:length(id)
+    train_predictions(i,1) = id(i);
+end
+
+
+
+% Calculate likelihood and a posteriori
 for i = 1:length(Test_array)
-        % YPOLOGISE PINAKA SINDIASPORAS
-%     for j = 1:5
-%         cmp  = (1/(sqrt(2*pi)*sigma(j)))*exp(-(Test_array(i,:)-mu(j)).^2/(2*sigma(j)));
-%         p(j) = prod(cmp,2)
-%     end
     p = normcdf(Test_array( i, :), mu, sigma);
     P(i,:) = Probabilities.*prod(p,2)';
 end 
@@ -129,7 +155,24 @@ for i=1:length(id)
     predictions(i,1) = id(i);
 end
 
- %Confusion matrix and Accuracy
+% Calculate a posteriori 
+for i = 1:length(Op_array)
+        % NA YPOLOGISW PINAKA SINDIASPORAS
+%     for j = 1:5
+%         cmp  = (1/(sqrt(2*pi)*sigma(j)))*exp(-(Test_array(i,:)-mu(j)).^2/(2*sigma(j)));
+%         p(j) = prod(cmp,2)
+%     end
+    p = normcdf(Op_array( i, :), mu, sigma);
+    P(i,:) = Probabilities.*prod(p,2)';
+end 
+
+% get predicted output for operations set
+[pv0,id]=max(P,[],2);
+for i=1:length(id)
+    op_predictions(i,1) = id(i);
+end
+
+%Confusion matrix and Accuracy
 confusion_matrix = zeros(5, 5);
 for i=1: length(predictions)
      confusion_matrix(Test_array_response(i), predictions(i) ) =  confusion_matrix(Test_array_response(i), predictions(i) ) + 1;
@@ -138,64 +181,192 @@ fprintf("My Naive Bayes\n");
 confusion_matrix
 success_rate = trace(confusion_matrix)/  sum(sum(confusion_matrix))
 
+op_confusion_matrix = zeros(5, 5);
+for i=1: length(op_predictions)
+     op_confusion_matrix(Op_array_response(i), op_predictions(i) ) =  confusion_matrix(Op_array_response(i), op_predictions(i) ) + 1;
+end
+op_confusion_matrix
+success_rate = trace(op_confusion_matrix)/  sum(sum(op_confusion_matrix))
 
-%--------------------------------------------- Euclidean Distance Classifier  -------------------------------------------------------------
-test_predictions = [];
-for i = 1:length(Test_array)
-   min = [sqrt(sum((Test_array(i, :) - Train_array(1,:)).^2)) Train_array_response(1)];
-   for j = 2:length(Train_array)
-        dist = sqrt(sum((Test_array(i, :) - Train_array(j,:)).^2));
-        if(dist < min(1))
-            min = [dist Train_array_response(j)];
-        end
-   end
-    test_predictions = [test_predictions; min(2)];
+image_colours = zeros(150);
+for i=1:length(Train_array)
+    if (Train_array_response(i) == 1)
+        image_colours(Train_array_pos(i,1), Train_array_pos(i, 2)) = 830;
+    elseif (Train_array_response(i) == 2)
+        image_colours(Train_array_pos(i,1), Train_array_pos(i, 2)) = 280;
+    elseif (Train_array_response(i) == 3)
+        image_colours(Train_array_pos(i,1), Train_array_pos(i, 2)) = 400;
+    elseif (Train_array_response(i) == 4)
+        image_colours(Train_array_pos(i,1), Train_array_pos(i, 2)) = 460;
+    elseif (Train_array_response(i) == 5)
+        image_colours(Train_array_pos(i,1), Train_array_pos(i, 2)) = 110;
+    end
+end
+for i=1:length(Test_array)
+    if (Test_array_response(i) == 1)
+        image_colours(Test_array_pos(i,1), Test_array_pos(i, 2)) = 830;
+    elseif (Test_array_response(i) == 2)
+        image_colours(Test_array_pos(i,1), Test_array_pos(i, 2)) = 280;
+    elseif (Test_array_response(i) == 3)
+        image_colours(Test_array_pos(i,1), Test_array_pos(i, 2)) = 400;
+    elseif (Test_array_response(i) == 4)
+        image_colours(Test_array_pos(i,1), Test_array_pos(i, 2)) = 460;
+    elseif (Test_array_response(i) == 5)
+        image_colours(Test_array_pos(i,1), Test_array_pos(i, 2)) = 110;
+    end
+end
+for i=1:length(Op_array)
+    if (Op_array_response(i) == 1)
+        image_colours(Op_array_pos(i,1), Op_array_pos(i, 2)) = 830;
+    elseif (Op_array_response(i) == 2)
+        image_colours(Op_array_pos(i,1), Op_array_pos(i, 2)) = 280;
+    elseif (Op_array_response(i) == 3)
+        image_colours(Op_array_pos(i,1), Op_array_pos(i, 2)) = 400;
+    elseif (Op_array_response(i) == 4)
+        image_colours(Op_array_pos(i,1), Op_array_pos(i, 2)) = 460;
+    elseif (Op_array_response(i) == 5)
+        image_colours(Op_array_pos(i,1), Op_array_pos(i, 2)) = 110;
+    end
 end
 
+figure(1), imagesc(image_colours)
+pause();
+
+my_colours = zeros(150);
+for i=1:length(Train_array)
+    if (train_predictions(i) == 1)
+        my_colours(Train_array_pos(i,1), Train_array_pos(i, 2)) = 830;
+    elseif (train_predictions(i) == 2)
+        my_colours(Train_array_pos(i,1), Train_array_pos(i, 2)) = 280;
+    elseif (train_predictions(i) == 3)
+        my_colours(Train_array_pos(i,1), Train_array_pos(i, 2)) = 400;
+    elseif (train_predictions(i) == 4)
+        my_colours(Train_array_pos(i,1), Train_array_pos(i, 2)) = 460;
+    elseif (train_predictions(i) == 5)
+        my_colours(Train_array_pos(i,1), Train_array_pos(i, 2)) = 110;
+    end
+end
+for i=1:length(Test_array)
+    if (predictions(i) == 1)
+        my_colours(Test_array_pos(i,1), Test_array_pos(i, 2)) = 830;
+    elseif (predictions(i) == 2)
+        my_colours(Test_array_pos(i,1), Test_array_pos(i, 2)) = 280;
+    elseif (predictions(i) == 3)
+        my_colours(Test_array_pos(i,1), Test_array_pos(i, 2)) = 400;
+    elseif (predictions(i) == 4)
+        my_colours(Test_array_pos(i,1), Test_array_pos(i, 2)) = 460;
+    elseif (predictions(i) == 5)
+        my_colours(Test_array_pos(i,1), Test_array_pos(i, 2)) = 110;
+    end
+end
+for i=1:length(Op_array)
+    if (op_predictions(i) == 1)
+        my_colours(Op_array_pos(i,1), Op_array_pos(i, 2)) = 830;
+    elseif (op_predictions(i) == 2)
+        my_colours(Op_array_pos(i,1), Op_array_pos(i, 2)) = 280;
+    elseif (op_predictions(i) == 3)
+        my_colours(Op_array_pos(i,1), Op_array_pos(i, 2)) = 400;
+    elseif (op_predictions(i) == 4)
+        my_colours(Op_array_pos(i,1), Op_array_pos(i, 2)) = 460;
+    elseif (op_predictions(i) == 5)
+        my_colours(Op_array_pos(i,1), Op_array_pos(i, 2)) = 110;
+    end
+end
+
+figure(2), imagesc(my_colours)
+pause();
+
+%--------------------------------------------- Euclidean Distance Classifier  -------------------------------------------------------------
+%Get mean of each class 
+for i=1:5
+    mu( i, :) = mean(Train_array((Train_array_response==i),:));
+end
+
+dist = [];
+
+train_predictions = [];
+for i = 1:length(Train_array)
+  for j = 1:5
+    dist(i, j) = [sqrt(sum((Train_array(i, :) - mu(j, :)).^ 2 ) )];
+  end
+end
+[dist, train_predictions] = min(dist,[],2);
+
+test_predictions = [];
+for i = 1:length(Test_array)
+  for j = 1:5
+    dist(i, j) = [sqrt(sum((Test_array(i, :) - mu(j, :)).^ 2 ) )];
+  end
+end
+[dist, test_predictions] = min(dist,[],2);
+
+
+op_predictions = [];
+for i = 1:length(Op_array)
+  for j = 1:5
+    dist(i, j) = [sqrt(sum((Op_array(i, :) - mu(j, :)).^ 2 ) )];
+  end
+end
+[dist, op_predictions] = min(dist,[],2);
+
 confusion_matrix = zeros(5, 5);
-for i=1: length(predictions)
+for i=1: length(test_predictions)
      confusion_matrix(Test_array_response(i), test_predictions(i) ) =  confusion_matrix(Test_array_response(i), test_predictions(i) ) + 1;
 end
 fprintf("Euclidean distance classifier\n");
 confusion_matrix
 success_rate = trace(confusion_matrix)/  sum(sum(confusion_matrix))
 
-%--------------------------------------------- 5-Nearest Neighbor -------------------------------------------------------------
-
-%MATLAB's KNN
-mdl = fitcknn(Train_array, Train_array_response, 'NumNeighbors', 5) ;       
-predictions = predict(mdl, Test_array);
-
-confusion_matrix = zeros(5, 5);
-for i=1: length(predictions)
-     confusion_matrix(Test_array_response(i), predictions(i) ) =  confusion_matrix(Test_array_response(i), predictions(i) ) + 1;
+op_confusion_matrix = zeros(5, 5);
+for i=1: length(op_predictions)
+     op_confusion_matrix(Op_array_response(i), op_predictions(i) ) =  confusion_matrix(Op_array_response(i), op_predictions(i) ) + 1;
 end
-fprintf("Matlab KNN\n");
-confusion_matrix
-success_rate = trace(confusion_matrix)/  sum(sum(confusion_matrix))
+op_confusion_matrix
+success_rate = trace(op_confusion_matrix)/  sum(sum(op_confusion_matrix))
 
-tree = KDTreeSearcher(Train_array, 'Distance' , 'euclidean' , 'BucketSize',10);
-ids = knnsearch(tree, Test_array, 'K',5);
-
-classes = ones(length(ids),5);
-for i = 1:length(classes)
-    for j =1:5
-        classes(i,j) = Train_array_response(ids(i));
+my_colours = zeros(150);
+for i=1:length(Train_array)
+    if (train_predictions(i) == 1)
+        my_colours(Train_array_pos(i,1), Train_array_pos(i, 2)) = 830;
+    elseif (train_predictions(i) == 2)
+        my_colours(Train_array_pos(i,1), Train_array_pos(i, 2)) = 280;
+    elseif (train_predictions(i) == 3)
+        my_colours(Train_array_pos(i,1), Train_array_pos(i, 2)) = 400;
+    elseif (train_predictions(i) == 4)
+        my_colours(Train_array_pos(i,1), Train_array_pos(i, 2)) = 460;
+    elseif (train_predictions(i) == 5)
+        my_colours(Train_array_pos(i,1), Train_array_pos(i, 2)) = 110;
+    end
+end
+for i=1:length(Test_array)
+    if (test_predictions(i) == 1)
+        my_colours(Test_array_pos(i,1), Test_array_pos(i, 2)) = 830;
+    elseif (test_predictions(i) == 2)
+        my_colours(Test_array_pos(i,1), Test_array_pos(i, 2)) = 280;
+    elseif (test_predictions(i) == 3)
+        my_colours(Test_array_pos(i,1), Test_array_pos(i, 2)) = 400;
+    elseif (test_predictions(i) == 4)
+        my_colours(Test_array_pos(i,1), Test_array_pos(i, 2)) = 460;
+    elseif (test_predictions(i) == 5)
+        my_colours(Test_array_pos(i,1), Test_array_pos(i, 2)) = 110;
+    end
+end
+for i=1:length(Op_array)
+    if (op_predictions(i) == 1)
+        my_colours(Op_array_pos(i,1), Op_array_pos(i, 2)) = 830;
+    elseif (op_predictions(i) == 2)
+        my_colours(Op_array_pos(i,1), Op_array_pos(i, 2)) = 280;
+    elseif (op_predictions(i) == 3)
+        my_colours(Op_array_pos(i,1), Op_array_pos(i, 2)) = 400;
+    elseif (op_predictions(i) == 4)
+        my_colours(Op_array_pos(i,1), Op_array_pos(i, 2)) = 460;
+    elseif (op_predictions(i) == 5)
+        my_colours(Op_array_pos(i,1), Op_array_pos(i, 2)) = 110;
     end
 end
 
-for i  = 1:length(classes)    
-    predictions(i) = mode(classes(i,:));
-end
-
-confusion_matrix = zeros(5, 5);
-for i=1: length(predictions)
-     confusion_matrix(Test_array_response(i), predictions(i) ) =  confusion_matrix(Test_array_response(i), predictions(i) ) + 1;
-end
-fprintf("My KNN\n");
-confusion_matrix
-success_rate = trace(confusion_matrix)/  sum(sum(confusion_matrix))
-
+figure(3), imagesc(my_colours)
+pause();
 
 
 %--------------------------------------------- Cross-Validate-Nearest Neighbor -------------------------------------------------------------
@@ -254,6 +425,109 @@ end
 
 best_predictor
 max_accuracy
+
+%--------------------------------------------- 3-Nearest Neighbor -------------------------------------------------------------
+
+%MATLAB's KNN
+mdl = fitcknn(Train_array, Train_array_response, 'NumNeighbors', 3) ;       
+predictions = predict(mdl, Test_array);
+
+confusion_matrix = zeros(5, 5);
+for i=1: length(predictions)
+     confusion_matrix(Test_array_response(i), predictions(i) ) =  confusion_matrix(Test_array_response(i), predictions(i) ) + 1;
+end
+fprintf("Matlab KNN\n");
+confusion_matrix
+success_rate = trace(confusion_matrix)/  sum(sum(confusion_matrix))
+
+tree = KDTreeSearcher(Train_array, 'Distance' , 'euclidean' , 'BucketSize',10);
+ids = knnsearch(tree, Test_array, 'K',3);
+
+classes = ones(length(ids),5);
+for i = 1:length(classes)
+    for j =1:5
+        classes(i,j) = Train_array_response(ids(i));
+    end
+end
+
+for i  = 1:length(classes)    
+    predictions(i) = mode(classes(i,:));
+end
+
+confusion_matrix = zeros(5, 5);
+for i=1: length(predictions)
+     confusion_matrix(Test_array_response(i), predictions(i) ) =  confusion_matrix(Test_array_response(i), predictions(i) ) + 1;
+end
+fprintf("My KNN\n");
+confusion_matrix
+success_rate = trace(confusion_matrix)/  sum(sum(confusion_matrix))
+
+tree = KDTreeSearcher(Train_array, 'Distance' , 'euclidean' , 'BucketSize',10);
+ids = knnsearch(tree, Op_array, 'K',3);
+
+classes = ones(length(ids),5);
+for i = 1:length(classes)
+    for j =1:5
+        classes(i,j) = Train_array_response(ids(i));
+    end
+end
+
+for i  = 1:length(classes)    
+    op_predictions(i) = mode(classes(i,:));
+end
+
+op_confusion_matrix = zeros(5, 5);
+for i=1: length(op_predictions)
+     op_confusion_matrix(Op_array_response(i), op_predictions(i) ) =  confusion_matrix(Op_array_response(i), op_predictions(i) ) + 1;
+end
+op_confusion_matrix
+success_rate = trace(op_confusion_matrix)/  sum(sum(op_confusion_matrix))
+
+my_colours = zeros(150);
+for i=1:length(Train_array)
+    if (Train_array_response(i) == 1)
+        my_colours(Train_array_pos(i,1), Train_array_pos(i, 2)) = 830;
+    elseif (Train_array_response(i) == 2)
+        my_colours(Train_array_pos(i,1), Train_array_pos(i, 2)) = 280;
+    elseif (Train_array_response(i) == 3)
+        my_colours(Train_array_pos(i,1), Train_array_pos(i, 2)) = 400;
+    elseif (Train_array_response(i) == 4)
+        my_colours(Train_array_pos(i,1), Train_array_pos(i, 2)) = 460;
+    elseif (Train_array_response(i) == 5)
+        my_colours(Train_array_pos(i,1), Train_array_pos(i, 2)) = 110;
+    end
+end
+for i=1:length(Test_array)
+    if (predictions(i) == 1)
+        my_colours(Test_array_pos(i,1), Test_array_pos(i, 2)) = 830;
+    elseif (predictions(i) == 2)
+        my_colours(Test_array_pos(i,1), Test_array_pos(i, 2)) = 280;
+    elseif (predictions(i) == 3)
+        my_colours(Test_array_pos(i,1), Test_array_pos(i, 2)) = 400;
+    elseif (predictions(i) == 4)
+        my_colours(Test_array_pos(i,1), Test_array_pos(i, 2)) = 460;
+    elseif (predictions(i) == 5)
+        my_colours(Test_array_pos(i,1), Test_array_pos(i, 2)) = 110;
+    end
+end
+for i=1:length(Op_array)
+    if (op_predictions(i) == 1)
+        my_colours(Op_array_pos(i,1), Op_array_pos(i, 2)) = 830;
+    elseif (op_predictions(i) == 2)
+        my_colours(Op_array_pos(i,1), Op_array_pos(i, 2)) = 280;
+    elseif (op_predictions(i) == 3)
+        my_colours(Op_array_pos(i,1), Op_array_pos(i, 2)) = 400;
+    elseif (op_predictions(i) == 4)
+        my_colours(Op_array_pos(i,1), Op_array_pos(i, 2)) = 460;
+    elseif (op_predictions(i) == 5)
+        my_colours(Op_array_pos(i,1), Op_array_pos(i, 2)) = 110;
+    end
+end
+
+figure(4), imagesc(my_colours)
+pause();
+
+
 
     
 
